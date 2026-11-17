@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StudyAI — Your Personal Curriculum Assistant</title>
+  <style>
+    /* =========================================
+       DESIGN SYSTEM & TOKENS
+       ========================================= */
+    :root {
+      --bg-canvas: #090d16;
+      --bg-surface: #111827;
+      --bg-elevated: #1f2937;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --accent: #a855f7;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --user-bubble: #6366f1;
+      --bot-bubble: #1f2937;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-pill: 9999px;
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 40%);
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 600px;
+      height: 90vh;
+      max-height: 800px;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* =========================================
+       HEADER COMPONENT
+       ========================================= */
+    .chat-header {
+      padding: 16px 24px;
+      background-color: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .bot-profile {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: var(--radius-pill);
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 1rem;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .bot-info h1 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-action {
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: var(--radius-md);
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-action:hover {
+      color: var(--text-main);
+      background-color: var(--bg-elevated);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* =========================================
+       CHAT STREAM & MESSAGES
+       ========================================= */
+    .chat-messages {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      scroll-behavior: smooth;
+    }
+
+    .chat-messages::-webkit-scrollbar {
+      width: 6px;
+    }
+    .chat-messages::-webkit-scrollbar-thumb {
+      background-color: var(--bg-elevated);
+      border-radius: var(--radius-pill);
+    }
+
+    .message-wrapper {
+      display: flex;
+      flex-direction: column;
+      max-width: 85%;
+      animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .message-wrapper.user {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .message-wrapper.bot {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+
+    .bubble {
+      padding: 14px 18px;
+      border-radius: var(--radius-md);
+      font-size: 0.95rem;
+      line-height: 1.55;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    .user .bubble {
+      background-color: var(--user-bubble);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    }
+
+    .bot .bubble {
+      background-color: var(--bot-bubble);
+      color: var(--text-main);
+      border-bottom-left-radius: 4px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .timestamp {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-top: 5px;
+      padding: 0 4px;
+    }
+
+    /* =========================================
+       TYPING INDICATOR
+       ========================================= */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 16px 20px;
+      background-color: var(--bot-bubble);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      border-bottom-left-radius: 4px;
+      width: fit-content;
+    }
+
+    .typing-indicator span {
+      width: 6px;
+      height: 6px;
+      background-color: var(--text-muted);
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out both;
+    }
+
+    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* =========================================
+       QUICK REPLIES / STUDY PROMPTS
+       ========================================= */
+    .quick-replies {
+      display: flex;
+      gap: 8px;
+      padding: 10px 24px;
+      overflow-x: auto;
+      border-top: 1px solid var(--border-subtle);
+      background-color: rgba(17, 24, 39, 0.5);
+    }
+
+    .quick-replies::-webkit-scrollbar {
+      display: none;
+    }
+
+    .chip {
+      white-space: nowrap;
+      background-color: var(--bg-elevated);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .chip:hover {
+      background-color: var(--primary);
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    }
+
+    .chip:active {
+      transform: scale(0.96);
+    }
+
+    /* =========================================
+       INPUT COMPOSER
+       ========================================= */
+    .chat-input-area {
+      padding: 16px 24px;
+      background-color: var(--bg-surface);
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .chat-input {
+      flex: 1;
+      background-color: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-pill);
+      padding: 14px 20px;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .chat-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    .btn-send {
+      width: 46px;
+      height: 46px;
+      border-radius: var(--radius-pill);
+      background-color: var(--primary);
+      border: none;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-send:hover:not(:disabled) {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-send:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+  <main class="chat-container" role="region" aria-label="Study Material AI Assistant">
+    <!-- Header -->
+    <header class="chat-header">
+      <div class="bot-profile">
+        <div class="avatar" aria-hidden="true">SA</div>
+        <div class="bot-info">
+          <h1>Study Material Assistant</h1>
+          <div class="status">
+            <span class="status-dot"></span>
+            <span>Curriculum Loaded & Ready</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn-action" id="summaryBtn" title="Get quick summary of notes">Summary</button>
+        <button type="button" class="btn-action" id="clearChatBtn" title="Clear conversation">Reset</button>
+      </div>
+    </header>
+
+    <!-- Message Stream -->
+    <section class="chat-messages" id="chatMessages" aria-live="polite"></section>
+
+    <!-- Suggested Study Actions -->
+    <div class="quick-replies" id="quickReplies" role="group" aria-label="Suggested study prompts">
+      <button type="button" class="chip" data-prompt="Summarize my core study notes">📋 Summarize Notes</button>
+      <button type="button" class="chip" data-prompt="Give me a practice quiz based on my material">✍️ Practice Quiz</button>
+      <button type="button" class="chip" data-prompt="Explain the most difficult concept in simple terms">💡 Explain Key Concept</button>
+      <button type="button" class="chip" data-prompt="Create flashcards for revision">⚡ Flashcards</button>
+    </div>
+
+    <!-- Input Bar -->
+    <form class="chat-input-area" id="chatForm">
+      <input
+        type="text"
+        id="userInput"
+        class="chat-input"
+        placeholder="Ask a question about your study material..."
+        autocomplete="off"
+        required
+      />
+      <button type="submit" class="btn-send" id="sendBtn" aria-label="Send message">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </form>
+  </main>
+
+  <script>
+    /**
+     * StudyAI Engine & Knowledge Base
+     * Easily replace or expand the studyKnowledgeBase below with your own syllabus, chapters, or notes.
+     */
+    class StudyChatbot {
+      constructor() {
+        this.messagesContainer = document.getElementById('chatMessages');
+        this.chatForm = document.getElementById('chatForm');
+        this.userInput = document.getElementById('userInput');
+        this.clearBtn = document.getElementById('clearChatBtn');
+        this.summaryBtn = document.getElementById('summaryBtn');
+        this.quickReplies = document.getElementById('quickReplies');
+
+        // ==========================================
+        // YOUR STUDY MATERIAL KNOWLEDGE BASE
+        // ==========================================
+        this.studyKnowledgeBase = {
+          topics: [
+            {
+              keywords: ['summary', 'notes', 'overview', 'chapter', 'syllabus'],
+              response: "📚 **Study Material Summary:**\n\nYour loaded curriculum covers key core concepts structured for active mastery:\n1. **Core Fundamentals:** Definitions, foundational laws, and historical context.\n2. **Applied Problem Solving:** Step-by-step methodologies and formula applications.\n3. **Advanced Analysis:** Critical evaluation, edge cases, and synthesis.\n\n*Tip: Ask me to quiz you on any specific section or explain a difficult topic in simpler terms!*"
+            },
+            {
+              keywords: ['quiz', 'test', 'question', 'practice'],
+              response: "✍️ **Practice Quiz Time!**\n\nLet's test your knowledge based on your study material. Here is Question 1:\n\n> *What is the primary underlying principle governing the core framework in your notes, and why is it essential for practical application?*\n\nType your answer below, and I'll evaluate it for you!"
+            },
+            {
+              keywords: ['concept', 'explain', 'difficult', 'understand', 'simple'],
+              response: "💡 **Concept Breakdown:**\n\nThe most critical concept in your materials can be broken down into 3 simple rules:\n1. **The Core Input:** What data or trigger starts the process.\n2. **The Transformation:** How the system or formula processes the input.\n3. **The Output:** The resulting value or state change.\n\nWould you like me to give you a real-world analogy for this?"
+            },
+            {
+              keywords: ['flashcard', 'revision', 'cards'],
+              response: "⚡ **Quick Revision Flashcards:**\n\n• **Card 1:** Define the core term in your syllabus.\n  *(Answer: The foundational metric used to measure system efficiency.)*\n\n• **Card 2:** What is the primary formula or rule?\n  *(Answer: Input multiplied by scaling factor divided by time.)*\n\nType 'next flashcards' for more review cards!"
+            },
+            {
+              keywords: ['python', 'code', 'programming', 'formula', 'calculation'],
+              response: "💻 **Programming & Formula Support:**\n\nHere is a quick reference snippet based on your technical notes:\n```python\n# Sample calculation helper from study material\ndef calculate_metric(value, scale):\n    return (value * scale) / 100\n\nprint(calculate_metric(150, 80))\n```\nLet me know if you need help debugging or writing code for your assignments!"
+            }
+          ],
+          defaultResponse: "That's a great question regarding your study material! Based on your uploaded notes and syllabus, I recommend reviewing the core definitions and practicing related problem sets. Would you like me to generate a practice quiz or summarize the main takeaways for this topic?"
+        };
+
+        this.init();
+      }
+
+      init() {
+        this.chatForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
+        this.clearBtn.addEventListener('click', () => this.resetChat());
+        this.summaryBtn.addEventListener('click', () => this.processUserMessage("Summarize my core study notes"));
+
+        this.quickReplies.addEventListener('click', (e) => {
+          if (e.target.classList.contains('chip')) {
+            const prompt = e.target.getAttribute('data-prompt');
+            this.processUserMessage(prompt);
+          }
+        });
+
+        this.resetChat();
+      }
+
+      resetChat() {
+        this.messagesContainer.innerHTML = '';
+        this.appendMessage("Hello! I'm your Study Assistant. I've loaded your curriculum notes. Ask me any question, request a summary, or tap a study prompt below to begin!", 'bot');
+      }
+
+      handleFormSubmit(e) {
+        e.preventDefault();
+        const text = this.userInput.value.trim();
+        if (!text) return;
+
+        this.userInput.value = '';
+        this.processUserMessage(text);
+      }
+
+      processUserMessage(text) {
+        this.appendMessage(text, 'user');
+        const typingId = this.showTypingIndicator();
+
+        // Simulated thinking delay for realism
+        const delay = Math.floor(Math.random() * 500) + 500;
+
+        setTimeout(() => {
+          this.removeTypingIndicator(typingId);
+          const reply = this.generateResponse(text);
+          this.appendMessage(reply, 'bot');
+        }, delay);
+      }
+
+      appendMessage(text, sender) {
+        const wrapper = document.createElement('div');
+        wrapper.className = `message-wrapper ${sender}`;
+
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.textContent = text;
+
+        const time = document.createElement('span');
+        time.className = 'timestamp';
+        time.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        wrapper.appendChild(bubble);
+        wrapper.appendChild(time);
+        this.messagesContainer.appendChild(wrapper);
+
+        this.scrollToBottom();
+      }
+
+      showTypingIndicator() {
+        const id = 'typing-' + Date.now();
+        const wrapper = document.createElement('div');
+        wrapper.className = 'message-wrapper bot';
+        wrapper.id = id;
+        wrapper.innerHTML = `
+          <div class="typing-indicator" aria-label="Assistant is analyzing notes">
+            <span></span><span></span><span></span>
+          </div>
+        `;
+        this.messagesContainer.appendChild(wrapper);
+        this.scrollToBottom();
+        return id;
+      }
+
+      removeTypingIndicator(id) {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+      }
+
+      scrollToBottom() {
+        this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+      }
+
+      generateResponse(input) {
+        const normalized = input.toLowerCase();
+
+        for (const topic of this.studyKnowledgeBase.topics) {
+          if (topic.keywords.some(keyword => normalized.includes(keyword))) {
+            return topic.response;
+          }
+        }
+
+        return `Regarding "${input}": Based on your curriculum material, this concept connects directly to your core chapters. Focus on understanding the primary definitions and practicing review questions. Would you like me to test you on this topic?`;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      new StudyChatbot();
+    });
+  </script>
+</body>
+</html>
